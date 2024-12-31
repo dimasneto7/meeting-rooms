@@ -1,52 +1,90 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Input } from '@/components/input'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import { useState } from 'react'
+import { api } from '@/lib/api'
+
+const schema = z.object({
+  email: z.string().min(1, 'O email é obrigatório'),
+  password: z.string().min(1, 'A senha é obrigatória'),
+})
+
+type FormData = z.infer<typeof schema>
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  })
+
+  const [loginError, setLoginError] = useState<string | null>(null)
   const router = useRouter()
 
-  const handleLogin = async () => {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
+  async function handleLogin(data: FormData) {
+    try {
+      const response = await api.post('/api/auth/login', {
+        email: data.email,
+        password: data.password,
+      })
 
-    if (res.ok) {
-      router.push('/dashboard')
-    } else {
-      alert('Login failed')
+      if (response.status === 200) {
+        setValue('email', '')
+        setValue('password', '')
+
+        router.push('/dashboard')
+      }
+    } catch (error: any) {
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        setLoginError(error.response.data.message)
+      } else {
+        setLoginError('Ocorreu um erro inesperado. Tente novamente.')
+      }
     }
   }
 
   return (
-    <div className="flex flex-col items-center justify-center w-full h-screen bg-zinc-900">
+    <main className="flex flex-col items-center justify-center w-full h-screen bg-zinc-900">
       <h1 className="font-bold text-2xl">Login</h1>
-      <form>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+      <form
+        onSubmit={handleSubmit(handleLogin)}
+        className="w-full max-w-96 mx-5"
+      >
+        <Input
+          register={register}
+          type="text"
           placeholder="Email"
-          className="w-full max-w-96 border-0 rounded h-11 px-2 mt-2 bg-zinc-700 text-white"
+          name="email"
+          error={errors.email?.message}
         />
-        <input
+        <Input
+          register={register}
           type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
-          className="w-full max-w-96 border-0 rounded h-11 px-2 mt-2 bg-zinc-700 text-white"
+          placeholder="Senha"
+          name="password"
+          error={errors.password?.message}
         />
         <button
-          onClick={handleLogin}
-          className="w-full max-w-96 border-0 rounded h-11 px-2 mt-2 bg-green-500 text-white font-bold"
+          type="submit"
+          className="w-full border-0 rounded h-11 px-2 mt-2 bg-green-500 text-white font-medium"
         >
-          Login
+          Entrar
         </button>
+        {loginError && (
+          <p className="text-red-500 text-sm mt-2">{loginError}</p>
+        )}
       </form>
-    </div>
+    </main>
   )
 }

@@ -13,14 +13,14 @@ export async function POST(req: Request) {
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return NextResponse.json(
-        { message: 'Invalid credentials' },
+        { message: 'Email ou senha inválido' },
         { status: 401 }
       )
     }
 
     if (user.status !== 'active') {
       return NextResponse.json(
-        { message: 'Account is inactive' },
+        { message: 'A conta está inativa' },
         { status: 403 }
       )
     }
