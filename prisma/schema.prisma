@@ -1,0 +1,20 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL") // Adicione sua URL de conexão MongoDB no arquivo .env
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String?
+  email     String   @unique
+  password  String
+  status    String   @default("active") // Pode ser "active" ou "inactive"
+  role      String   @default("user")   // Pode ser "admin" ou "user"
+
+  created_at DateTime? @default(now())
+  updated_at DateTime? @default(now())
+}
