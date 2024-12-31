@@ -3,84 +3,125 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+import { Input } from '@/components/input'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import { api } from '@/lib/api'
+
+const schema = z
+  .object({
+    name: z.string().min(1, 'O nome é obrigatório'),
+    email: z
+      .string()
+      .email('Insira um email válido')
+      .min(1, 'O email é obrigatório'),
+    password: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres'),
+    confirmPassword: z.string().min(1, 'A confirmação de senha é obrigatória'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas não conferem',
+    path: ['confirmPassword'], // Adiciona a mensagem de erro ao campo confirmPassword
+  })
+
+type FormData = z.infer<typeof schema>
+
 export default function SignupPage() {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  })
+
+  const [signupError, setSignupError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const handleSignup = async () => {
-    setLoading(true)
+  async function handleSignup(data: FormData) {
+    try {
+      const response = await api.post('/api/auth/signup', {
+        name: data.name,
+        email: data.email,
+        password: data.password,
+      })
 
-    const res = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password }),
-    })
+      if (response.status === 201) {
+        setValue('name', '')
+        setValue('email', '')
+        setValue('password', '')
+        setValue('confirmPassword', '')
 
-    if (res.ok) {
-      alert('Signup successful! Redirecting to login...')
-      router.push('/login')
-    } else {
-      const errorData = await res.json()
-      alert(`Signup failed: ${errorData.message}`)
+        router.push('/login')
+      }
+    } catch (error: any) {
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        setSignupError(error.response.data.message)
+      } else {
+        setSignupError('Ocorreu um erro inesperado. Tente novamente.')
+      }
     }
-
-    setLoading(false)
   }
 
   return (
-    <div className="signup-container">
-      <h1>Sign Up</h1>
+    <main className="flex flex-col items-center justify-center w-full h-screen bg-zinc-900">
+      <h1 className="font-bold text-2xl">Faça o seu cadastro</h1>
       <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          handleSignup()
-        }}
+        onSubmit={handleSubmit(handleSignup)}
+        className="w-full max-w-96 mx-5"
       >
-        <div>
-          <label htmlFor="name">Name (optional):</label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
-          />
-        </div>
+        <Input
+          register={register}
+          type="text"
+          placeholder="Nome"
+          name="name"
+          error={errors.name?.message}
+        />
 
-        <div>
-          <label htmlFor="email">Email:</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Your email"
-            required
-          />
-        </div>
+        <Input
+          register={register}
+          type="text"
+          placeholder="Email"
+          name="email"
+          error={errors.email?.message}
+        />
 
-        <div>
-          <label htmlFor="password">Password:</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Your password"
-            required
-          />
-        </div>
+        <Input
+          register={register}
+          type="password"
+          placeholder="Senha"
+          name="password"
+          error={errors.password?.message}
+        />
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Signing up...' : 'Sign Up'}
+        <Input
+          register={register}
+          type="password"
+          placeholder="Confirme sua senha"
+          name="confirmPassword"
+          error={errors.confirmPassword?.message}
+        />
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full border-0 rounded h-11 px-2 mt-2 bg-green-500 text-white font-medium"
+        >
+          {loading ? 'Registrando...' : 'Registrar'}
         </button>
+        {signupError && (
+          <p className="text-red-500 text-sm mt-2">{signupError}</p>
+        )}
       </form>
-      <p>
-        Already have an account? <a href="/login">Log in here</a>.
+      <p className="mt-5 text-sm">
+        Já tem um cadastro? <a href="/login">Clique aqui</a>.
       </p>
-    </div>
+    </main>
   )
 }

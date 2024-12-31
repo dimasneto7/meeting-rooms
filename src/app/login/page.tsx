@@ -1,11 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+
 import { Input } from '@/components/input'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { useState } from 'react'
 import { api } from '@/lib/api'
 
 const schema = z.object({
@@ -85,6 +86,9 @@ export default function LoginPage() {
           <p className="text-red-500 text-sm mt-2">{loginError}</p>
         )}
       </form>
+      <p className="mt-5 text-sm">
+        Ainda não tem cadastro? <a href="/signup">Clique aqui</a>.
+      </p>
     </main>
   )
 }
